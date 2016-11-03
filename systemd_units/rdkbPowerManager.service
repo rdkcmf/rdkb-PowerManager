@@ -1,0 +1,14 @@
+[Unit]
+Description=RDKB Power Manager service
+After=dbus.service
+
+[Service]
+Type=forking
+PIDFile=/tmp/.rdkbPowerMgr.pid
+ExecStart=/usr/ccsp/rdkbPowerMgr
+ExecStop=/bin/kill -HUP $(/bin/cat /tmp/.rdkbPowerMgr.pid)
+ExecStop=/bin/rm /tmp/.rdkbPowerMgr.pid
+StandardOutput=syslog
+
+[Install]
+WantedBy=multi-user.target
