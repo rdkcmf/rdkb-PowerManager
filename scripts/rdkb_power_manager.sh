@@ -57,9 +57,9 @@ PWRMODE=$1
 
 if [ "$PWRMODE" = "" ]; then
     usage
-elif [ "$PWRMODE" == "POWER_TRANS_AC"]; then
+elif [ "$PWRMODE" == "POWER_TRANS_AC" ]; then
     PwrMgr_StartupComponents
-elif [ "$PWRMODE" == "POWER_TRANS_BATTERY"]; then
+elif [ "$PWRMODE" == "POWER_TRANS_BATTERY" ]; then
     PwrMgr_TearDownComponents
 else
     usage

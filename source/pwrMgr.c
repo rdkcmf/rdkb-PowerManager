@@ -72,6 +72,8 @@ static pthread_t sysevent_tid;
 #define WARNING  1
 #define ERROR 2
 
+#undef FEATURE_SUPPORT_RDKLOG
+
 #ifdef FEATURE_SUPPORT_RDKLOG
 #include "ccsp_trace.h"
 const char compName[25]="LOG.RDK.PWRMGR";
@@ -113,7 +115,8 @@ static int PwrMgr_StateTranstion(char *cState)
     PWRMGRLOG(INFO, "Entering into %s new state\n",__FUNCTION__);
 
     // Convert from sysevent string to power state
-    for (int i=0;i<PWRMGR_STATE_TOTAL;i++) {
+    int i=0;
+    for (i=0;i<PWRMGR_STATE_TOTAL;i++) {
         if (strcmp(powerStateArr[i].pwrStateStr,cState) == 0) {
             newState = powerStateArr[i].pwrState;
             break;
@@ -125,13 +128,13 @@ static int PwrMgr_StateTranstion(char *cState)
     case PWRMGR_STATE_AC:
         PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrStateStr, powerStateArr[newState].pwrStateStr);
         // We need to call an RDKB management script to tear down the CCSP components.
-        system("/bin/sh /usr/ccsp/rdkb_power_manager.sh POWER_TRANS_AC &");
+        system("/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_AC &");
         gCurPowerState = newState;
         break;
     case PWRMGR_STATE_BATT:
         PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrStateStr, powerStateArr[newState].pwrStateStr);
         // We need to call an RDKB management script to tear down the CCSP components.
-        system("/bin/sh /usr/ccsp/rdkb_power_manager.sh POWER_TRANS_BATTERY &");
+        system("/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_BATTERY &");
         gCurPowerState = newState;
         break;
     default:
