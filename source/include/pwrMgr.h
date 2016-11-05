@@ -49,8 +49,9 @@ typedef enum
 
 typedef struct
 {
-    PWRMGR_PwrState pwrState;
-    char *pwrStateStr;
+    PWRMGR_PwrState pwrState; // Enum value of the power state
+    char *pwrTransStr;  // Power State transition string
+    char *pwrStateStr;  // Power State string
 } PWRMGR_PwrStateItem;
 
 #endif

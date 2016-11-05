@@ -28,7 +28,7 @@ function usage()
 {
   echo 'Usage : rdkb_power_manager.sh <power mode>'
   echo '        where <power mode> = POWER_TRANS_AC, POWER_TRANS_BATTERY'
-  exit
+  exit 1
 }
 
 function PwrMgr_TearDownComponents()
@@ -40,6 +40,9 @@ function PwrMgr_TearDownComponents()
     #
     # If possible we need to keep CcspPandM, CcspCrSsp and WebPA for remote battery monitoring and
     # CcspMtaAgent for voice service.
+    
+    # Return 0 for Succes, Return 1 for failure.
+    exit 0
 }
 
 function PwrMgr_StartupComponents()
@@ -47,6 +50,9 @@ function PwrMgr_StartupComponents()
     echo "Restoring RDKB Components"
     # We have to perform an orderly start of the RDKB components. Basically we have to start
     # the processes that we shut down above in the correct order.
+
+    # Return 0 for Succes, Return 1 for failure.    
+    exit 0
 }
 
 if [ "$#" -ne 1 ]; then

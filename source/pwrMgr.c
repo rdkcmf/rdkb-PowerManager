@@ -37,6 +37,10 @@
  *  Transition from AC to Battery
  *  sysevent set rdkb-power-transition ACTIVE_ON_BATTERY
  *
+ *  When the transition is complete, the rdkb power state will change:
+ *  rdkb-power-state AC
+ *  rdkb-power-state BATTERY
+ *
  */
 
 /**************************************************************************/
@@ -58,6 +62,7 @@
 #include <sysevent/sysevent.h>
 #include <syscfg/syscfg.h>
 #include <pthread.h>
+#include <stdarg.h>
 #include "stdbool.h"
 #include "pwrMgr.h"
 
@@ -67,6 +72,8 @@
 static int sysevent_fd;
 static token_t sysevent_token;
 static pthread_t sysevent_tid;
+static int sysevent_fd_gs;
+static token_t sysevent_token_gs;
 
 #define INFO  0
 #define WARNING  1
@@ -85,11 +92,12 @@ const char compName[25]="LOG.RDK.PWRMGR";
 
 #define _DEBUG 1
 #define THREAD_NAME_LEN 16 //length is restricted to 16 characters, including the terminating null byte
+#define DATA_SIZE 1024
 
 // Power Management state structure. This should have PWRMGR_STATE_TOTAL-1 entries
-PWRMGR_PwrStateItem powerStateArr[] = { {PWRMGR_STATE_NONE, "NONE"},
-                                        {PWRMGR_STATE_AC,   "POWER_TRANS_AC"},
-                                        {PWRMGR_STATE_BATT, "POWER_TRANS_BATTERY"} };
+PWRMGR_PwrStateItem powerStateArr[] = { {PWRMGR_STATE_NONE, "NONE", "NONE"},
+                                        {PWRMGR_STATE_AC,   "POWER_TRANS_AC", "AC"},
+                                        {PWRMGR_STATE_BATT, "POWER_TRANS_BATTERY", "BATTERY"} };
 
 static PWRMGR_PwrState gCurPowerState;
 
@@ -104,6 +112,14 @@ static void PwrMgr_SetDefaults()
     gCurPowerState = PWRMGR_STATE_AC;
 }
 
+/**
+ *  @brief Send sysevent string
+ *  @return 0
+ */
+int PwrMgr_SyseventSetStr(const char *name, unsigned char *value, int bufsz)
+{
+    return sysevent_set(sysevent_fd_gs, sysevent_token_gs, name, value, bufsz);
+}
 
 /**
  *  @brief Transition power states
@@ -111,13 +127,17 @@ static void PwrMgr_SetDefaults()
  */
 static int PwrMgr_StateTranstion(char *cState)
 {
+    FILE *fp = NULL;
+    char cmd[DATA_SIZE] = {0};
+    bool transSuccess = false;
+
     PWRMGR_PwrState newState = PWRMGR_STATE_NONE;
     PWRMGRLOG(INFO, "Entering into %s new state\n",__FUNCTION__);
 
     // Convert from sysevent string to power state
     int i=0;
     for (i=0;i<PWRMGR_STATE_TOTAL;i++) {
-        if (strcmp(powerStateArr[i].pwrStateStr,cState) == 0) {
+        if (strcmp(powerStateArr[i].pwrTransStr,cState) == 0) {
             newState = powerStateArr[i].pwrState;
             break;
         }
@@ -126,21 +146,52 @@ static int PwrMgr_StateTranstion(char *cState)
     // Check the state we are transitioning to
     switch (newState){
     case PWRMGR_STATE_AC:
-        PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrStateStr, powerStateArr[newState].pwrStateStr);
+        PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
         // We need to call an RDKB management script to tear down the CCSP components.
-        system("/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_AC &");
-        gCurPowerState = newState;
+        sprintf(cmd, "/bin/sh /usr/ccsp/rdkb_power_manager.sh POWER_TRANS_AC");
+
+        fp = popen(cmd, "r");
+        if (fp == NULL) {
+            /* Could not run command we can't transition to new state */
+            PWRMGRLOG(ERROR, "Error opening command pipe during power transition! \n");
+            return true;
+        }
+
+        if (pclose(fp) == 0) {
+            transSuccess = true;
+            gCurPowerState = newState;
+        }
+
         break;
     case PWRMGR_STATE_BATT:
-        PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrStateStr, powerStateArr[newState].pwrStateStr);
+        PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
         // We need to call an RDKB management script to tear down the CCSP components.
-        system("/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_BATTERY &");
-        gCurPowerState = newState;
+        sprintf(cmd, "/bin/sh /usr/ccsp/rdkb_power_manager.sh POWER_TRANS_BATTERY");
+
+        fp = popen(cmd, "r");
+        if (fp == NULL) {
+            /* Could not run command we can't transition to new state */
+            PWRMGRLOG(ERROR, "Error opening command pipe during power transition! \n");
+            return true;
+        }
+
+        if (pclose(fp) == 0) {
+            transSuccess = true;
+            gCurPowerState = newState;
+        }
         break;
     default:
         PWRMGRLOG(ERROR, "%s: Transition requested to unknown power state %s\n",__FUNCTION__, cState);
         break;
     }
+
+    if (transSuccess) {
+        PWRMGRLOG(INFO, "%s: Power transition to %s Success\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr);
+        PwrMgr_SyseventSetStr("rdkb-power-state", powerStateArr[gCurPowerState].pwrStateStr, 0);
+    } else {
+        PWRMGRLOG(ERROR, "%s: Power transition to %s FAILED\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr);
+    }
+
     PWRMGRLOG(INFO, "Exiting from %s\n",__FUNCTION__);
     return 0;
 }
@@ -157,9 +208,10 @@ static void *PwrMgr_sysevent_handler(void *data)
     async_id_t power_transition_asyncid;
 
     sysevent_setnotification(sysevent_fd, sysevent_token, "rdkb-power-transition",  &power_transition_asyncid);
+    sysevent_set_options(sysevent_fd_gs, sysevent_token, "rdkb-power-state", TUPLE_FLAG_EVENT);
 
-   for (;;)
-   {
+    for (;;)
+    {
         unsigned char name[25], val[42];
         int namelen = sizeof(name);
         int vallen  = sizeof(val);
@@ -171,7 +223,7 @@ static void *PwrMgr_sysevent_handler(void *data)
 
         if (err)
         {
-           PWRMGRLOG(ERROR, "sysevent_getnotification failed with error: %d\n", err)
+            PWRMGRLOG(ERROR, "sysevent_getnotification failed with error: %d\n", err)
         }
         else
         {
@@ -180,12 +232,12 @@ static void *PwrMgr_sysevent_handler(void *data)
             if (strcmp(name, "rdkb-power-transition") == 0)
             {
                 if (vallen > 0 && val[0] != '\0') {
-                   PwrMgr_StateTranstion(val);
+                    PwrMgr_StateTranstion(val);
                 }
             }
             else
             {
-               PWRMGRLOG(WARNING, "undefined event %s \n",name)
+                PWRMGRLOG(WARNING, "undefined event %s \n",name)
             }			
         }
     }
@@ -216,6 +268,19 @@ static bool PwrMgr_Register_sysevent()
         else
         {  
             PWRMGRLOG(INFO, "rdkb_power_manager registered with sysevent daemon successfully\n");
+            status = true;
+        }
+
+        //Make another connection for gets/sets
+        sysevent_fd_gs = sysevent_open("127.0.0.1", SE_SERVER_WELL_KNOWN_PORT, SE_VERSION, "rdkb_power_manager-gs", &sysevent_token_gs);
+        if (sysevent_fd_gs < 0)
+        {
+            PWRMGRLOG(ERROR, "rdkb_power_manager-gs failed to register with sysevent daemon\n");
+            status = false;
+        }
+        else
+        {
+            PWRMGRLOG(INFO, "rdkb_power_manager-gs registered with sysevent daemon successfully\n");
             status = true;
         }
 
