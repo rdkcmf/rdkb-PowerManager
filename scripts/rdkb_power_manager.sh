@@ -42,6 +42,11 @@ function PwrMgr_TearDownComponents()
     # CcspMtaAgent for voice service.
     
     # Return 0 for Succes, Return 1 for failure.
+    systemctl stop harvester.service
+    systemctl stop CcspLMLite.service
+    systemctl stop ccspwifiagent.service
+    systemctl stop CcspMoca.service
+	
     exit 0
 }
 
@@ -51,7 +56,12 @@ function PwrMgr_StartupComponents()
     # We have to perform an orderly start of the RDKB components. Basically we have to start
     # the processes that we shut down above in the correct order.
 
-    # Return 0 for Succes, Return 1 for failure.    
+    # Return 0 for Succes, Return 1 for failure.
+    systemctl start CcspMoca.service
+    systemctl start ccspwifiagent.service
+    systemctl start CcspLMLite.service
+    systemctl start harvester.service
+	
     exit 0
 }
 
