@@ -1,14 +1,17 @@
 [Unit]
 Description=RDKB Power Manager service
-After=dbus.service
+After=CcspCrSsp.service
 
 [Service]
 Type=forking
 PIDFile=/tmp/.rdkbPowerMgr.pid
-ExecStart=/usr/ccsp/rdkbPowerMgr
+Environment="LOG4C_RCPATH=/etc"
+WorkingDirectory=/usr/ccsp/pwrMgr
+ExecStart=/usr/bin/rdkbPowerMgr
 ExecStop=/bin/kill -HUP $(/bin/cat /tmp/.rdkbPowerMgr.pid)
 ExecStop=/bin/rm /tmp/.rdkbPowerMgr.pid
-StandardOutput=syslog
+Restart=always
+StandardOutput=syslog+console
 
 [Install]
 WantedBy=multi-user.target

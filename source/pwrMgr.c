@@ -32,10 +32,10 @@
  *
  *  This code is listening for the following power system transition events:
  *  Transition from Battery to AC:
- *  sysevent set rdkb-power-transition ACTIVE_ON_AC
+ *  sysevent set rdkb-power-transition POWER_TRANS_AC
  *
  *  Transition from AC to Battery
- *  sysevent set rdkb-power-transition ACTIVE_ON_BATTERY
+ *  sysevent set rdkb-power-transition POWER_TRANS_BATTERY
  *
  *  When the transition is complete, the rdkb power state will change:
  *  rdkb-power-state AC
@@ -79,14 +79,12 @@ static token_t sysevent_token_gs;
 #define WARNING  1
 #define ERROR 2
 
-#undef FEATURE_SUPPORT_RDKLOG
-
 #ifdef FEATURE_SUPPORT_RDKLOG
 #include "ccsp_trace.h"
 const char compName[25]="LOG.RDK.PWRMGR";
 #define DEBUG_INI_NAME  "/etc/debug.ini"
-#define PWRMGRLOG(x, ...) { if((x)==(INFO)){CcspTraceInfo((__VA_ARGS__));}else if((x)==(WARNING)){CcspTraceWarning((__VA_ARGS__));}else if((x)==(ERROR)){CcspTraceError((__VA_ARGS__));} }
-#else
+//#define PWRMGRLOG(x, ...) { if((x)==(INFO)){CcspTraceInfo((__VA_ARGS__));}else if((x)==(WARNING)){CcspTraceWarning((__VA_ARGS__));}else if((x)==(ERROR)){CcspTraceError((__VA_ARGS__));} }
+//#else
 #define PWRMGRLOG(x, ...) {fprintf(stderr, "PowerMgrLog<%s:%d> ", __FUNCTION__, __LINE__);fprintf(stderr, __VA_ARGS__);}
 #endif
 
@@ -143,53 +141,57 @@ static int PwrMgr_StateTranstion(char *cState)
         }
     }
 
-    // Check the state we are transitioning to
-    switch (newState){
-    case PWRMGR_STATE_AC:
-        PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
-        // We need to call an RDKB management script to tear down the CCSP components.
-        sprintf(cmd, "/bin/sh /usr/ccsp/rdkb_power_manager.sh POWER_TRANS_AC");
-
-        fp = popen(cmd, "r");
-        if (fp == NULL) {
-            /* Could not run command we can't transition to new state */
-            PWRMGRLOG(ERROR, "Error opening command pipe during power transition! \n");
-            return true;
-        }
-
-        if (pclose(fp) == 0) {
-            transSuccess = true;
-            gCurPowerState = newState;
-        }
-
-        break;
-    case PWRMGR_STATE_BATT:
-        PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
-        // We need to call an RDKB management script to tear down the CCSP components.
-        sprintf(cmd, "/bin/sh /usr/ccsp/rdkb_power_manager.sh POWER_TRANS_BATTERY");
-
-        fp = popen(cmd, "r");
-        if (fp == NULL) {
-            /* Could not run command we can't transition to new state */
-            PWRMGRLOG(ERROR, "Error opening command pipe during power transition! \n");
-            return true;
-        }
-
-        if (pclose(fp) == 0) {
-            transSuccess = true;
-            gCurPowerState = newState;
-        }
-        break;
-    default:
-        PWRMGRLOG(ERROR, "%s: Transition requested to unknown power state %s\n",__FUNCTION__, cState);
-        break;
-    }
-
-    if (transSuccess) {
-        PWRMGRLOG(INFO, "%s: Power transition to %s Success\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr);
-        PwrMgr_SyseventSetStr("rdkb-power-state", powerStateArr[gCurPowerState].pwrStateStr, 0);
+    if (newState == gCurPowerState) {
+        PWRMGRLOG(WARNING, "%s: Power transition requested to current state %s ignored\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr);
     } else {
-        PWRMGRLOG(ERROR, "%s: Power transition to %s FAILED\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr);
+        // Check the state we are transitioning to
+        switch (newState){
+        case PWRMGR_STATE_AC:
+            PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
+            // We need to call an RDKB management script to tear down the CCSP components.
+            sprintf(cmd, "/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_AC");
+
+            fp = popen(cmd, "r");
+            if (fp == NULL) {
+                /* Could not run command we can't transition to new state */
+                PWRMGRLOG(ERROR, "Error opening command pipe during power transition! \n");
+                return true;
+            }
+
+            if (pclose(fp) == 0) {
+                transSuccess = true;
+                gCurPowerState = newState;
+            }
+
+            break;
+        case PWRMGR_STATE_BATT:
+            PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
+            // We need to call an RDKB management script to tear down the CCSP components.
+            sprintf(cmd, "/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_BATTERY");
+
+            fp = popen(cmd, "r");
+            if (fp == NULL) {
+                /* Could not run command we can't transition to new state */
+                PWRMGRLOG(ERROR, "Error opening command pipe during power transition! \n");
+                return true;
+            }
+
+            if (pclose(fp) == 0) {
+                transSuccess = true;
+                gCurPowerState = newState;
+            }
+            break;
+        default:
+            PWRMGRLOG(ERROR, "%s: Transition requested to unknown power state %s\n",__FUNCTION__, cState);
+            break;
+        }
+
+        if (transSuccess) {
+            PWRMGRLOG(INFO, "%s: Power transition to %s Success\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr);
+            PwrMgr_SyseventSetStr("rdkb-power-state", powerStateArr[gCurPowerState].pwrStateStr, 0);
+        } else {
+            PWRMGRLOG(ERROR, "%s: Power transition to %s FAILED\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr);
+        }
     }
 
     PWRMGRLOG(INFO, "Exiting from %s\n",__FUNCTION__);
