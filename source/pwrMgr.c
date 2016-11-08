@@ -83,8 +83,8 @@ static token_t sysevent_token_gs;
 #include "ccsp_trace.h"
 const char compName[25]="LOG.RDK.PWRMGR";
 #define DEBUG_INI_NAME  "/etc/debug.ini"
-//#define PWRMGRLOG(x, ...) { if((x)==(INFO)){CcspTraceInfo((__VA_ARGS__));}else if((x)==(WARNING)){CcspTraceWarning((__VA_ARGS__));}else if((x)==(ERROR)){CcspTraceError((__VA_ARGS__));} }
-//#else
+#define PWRMGRLOG(x, ...) { if((x)==(INFO)){CcspTraceInfo((__VA_ARGS__));}else if((x)==(WARNING)){CcspTraceWarning((__VA_ARGS__));}else if((x)==(ERROR)){CcspTraceError((__VA_ARGS__));} }
+#else
 #define PWRMGRLOG(x, ...) {fprintf(stderr, "PowerMgrLog<%s:%d> ", __FUNCTION__, __LINE__);fprintf(stderr, __VA_ARGS__);}
 #endif
 
