@@ -108,6 +108,10 @@ static void PwrMgr_SetDefaults()
     // Not sure what we are going to do here. Should we ask someone what the current state is? Basically if we
     // boot up in battery mode are we going to get a later notification that there was a power state change?
     gCurPowerState = PWRMGR_STATE_AC;
+
+    // wait a couple seconds before sending the initial sysevent
+    sleep(5);
+    PwrMgr_SyseventSetStr("rdkb-power-state", powerStateArr[gCurPowerState].pwrStateStr, 0);
 }
 
 /**
