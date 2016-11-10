@@ -28,10 +28,14 @@
  *
  *  This code is listening for the following power system transition events:
  *  Transition from Battery to AC:
- *  sysevent set rdkb-power-transition ACTIVE_ON_AC
+ *  sysevent set rdkb-power-transition POWER_TRANS_AC
  *
  *  Transition from AC to Battery
- *  sysevent set rdkb-power-transition ACTIVE_ON_BATTERY
+ *  sysevent set rdkb-power-transition POWER_TRANS_BATTERY
+ *
+ *  When the transition is complete, the rdkb power state will change:
+ *  rdkb-power-state AC
+ *  rdkb-power-state BATTERY
  *
  */
 
