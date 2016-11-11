@@ -1,6 +1,6 @@
 [Unit]
 Description=RDKB Power Manager service
-After=logagent.service
+After=CcspCrSsp.service logagent.service
 
 [Service]
 Type=forking
