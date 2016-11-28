@@ -88,16 +88,21 @@ const char compName[25]="LOG.RDK.PWRMGR";
 #define PWRMGRLOG(x, ...) {fprintf(stderr, "PowerMgrLog<%s:%d> ", __FUNCTION__, __LINE__);fprintf(stderr, __VA_ARGS__);}
 #endif
 
+// We need to put this after the ccsp_trace.h above, since it re-defines CHAR
+#include "mta_hal.h"
+
 #define _DEBUG 1
 #define THREAD_NAME_LEN 16 //length is restricted to 16 characters, including the terminating null byte
 #define DATA_SIZE 1024
 
 // Power Management state structure. This should have PWRMGR_STATE_TOTAL-1 entries
-PWRMGR_PwrStateItem powerStateArr[] = { {PWRMGR_STATE_NONE, "NONE", "NONE"},
+PWRMGR_PwrStateItem powerStateArr[] = { {PWRMGR_STATE_UNKNOWN, "POWER_TRANS_UNKNOWN", "Unknown"},
                                         {PWRMGR_STATE_AC,   "POWER_TRANS_AC", "AC"},
-                                        {PWRMGR_STATE_BATT, "POWER_TRANS_BATTERY", "BATTERY"} };
+                                        {PWRMGR_STATE_BATT, "POWER_TRANS_BATTERY", "Battery"} };
 
 static PWRMGR_PwrState gCurPowerState;
+
+static int PwrMgr_StateTranstion(char *cState);
 
 /**
  *  @brief Set Power Manager system defaults
@@ -105,9 +110,29 @@ static PWRMGR_PwrState gCurPowerState;
  */
 static void PwrMgr_SetDefaults()
 {
-    // Not sure what we are going to do here. Should we ask someone what the current state is? Basically if we
+    // Not sure what we should do here. Should we ask someone what the current state is? Basically if we
     // boot up in battery mode are we going to get a later notification that there was a power state change?
+    // For now, we will call the mta hal to see what our current power state is.
     gCurPowerState = PWRMGR_STATE_AC;
+    char status[DATA_SIZE] = {0};
+    int len = 0;
+    int halStatus = RETURN_OK;
+
+    // Fetch the current battery status from mta - returns "AC", "Battery" or "Unknown"
+    halStatus = mta_hal_BatteryGetPowerStatus (&status, &len);
+
+    if (halStatus == RETURN_OK && len > 0 && status[0] != 0) {
+        PWRMGRLOG(INFO, "%s: Power Manager mta_hal_BatteryGetPowerStatus returned %s\n",__FUNCTION__, status);
+
+        if (strcmp(status, powerStateArr[PWRMGR_STATE_BATT].pwrStateStr) == 0) {
+            PwrMgr_StateTranstion(powerStateArr[PWRMGR_STATE_BATT].pwrTransStr);
+        }
+    } else {
+        PWRMGRLOG(ERROR, "%s: Power Manager mta_hal_BatteryGetPowerStatus call FAILED!\n",__FUNCTION__);
+    }
+
+    PWRMGRLOG(INFO, "%s: Power Manager initializing with %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrStateStr);
+
 
     // wait a couple seconds before sending the initial sysevent
     sleep(5);
@@ -133,7 +158,7 @@ static int PwrMgr_StateTranstion(char *cState)
     char cmd[DATA_SIZE] = {0};
     bool transSuccess = false;
 
-    PWRMGR_PwrState newState = PWRMGR_STATE_NONE;
+    PWRMGR_PwrState newState = PWRMGR_STATE_UNKNOWN;
     PWRMGRLOG(INFO, "Entering into %s new state\n",__FUNCTION__);
 
     // Convert from sysevent string to power state
