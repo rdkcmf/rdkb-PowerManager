@@ -46,7 +46,6 @@ function PwrMgr_TearDownComponents()
     systemctl stop CcspLMLite.service
     systemctl stop ccspwifiagent.service
     systemctl stop CcspMoca.service
-    systemctl stop CcspWecbController.service
 
     exit 0
 }
@@ -59,7 +58,6 @@ function PwrMgr_StartupComponents()
 
     # Return 0 for Succes, Return 1 for failure.
     systemctl start CcspMoca.service
-    systemctl start CcspWecbController.service
     systemctl start ccspwifiagent.service
     systemctl start CcspLMLite.service
     systemctl start harvester.service
