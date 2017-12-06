@@ -44,6 +44,7 @@ function PwrMgr_TearDownComponents()
     # Return 0 for Succes, Return 1 for failure.
     systemctl stop harvester.service
     systemctl stop CcspLMLite.service
+    systemctl stop CcspEthAgent.service
     systemctl stop ccspwifiagent.service
     systemctl stop CcspMoca.service
 
@@ -59,6 +60,7 @@ function PwrMgr_StartupComponents()
     # Return 0 for Succes, Return 1 for failure.
     systemctl start CcspMoca.service
     systemctl start ccspwifiagent.service
+    systemctl start CcspEthAgent.service
     systemctl start CcspLMLite.service
     systemctl start harvester.service
 
