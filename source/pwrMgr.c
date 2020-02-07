@@ -254,6 +254,11 @@ static void *PwrMgr_sysevent_handler(void *data)
         if (err)
         {
             PWRMGRLOG(ERROR, "sysevent_getnotification failed with error: %d\n", err)
+            if ( 0 != system("pidof syseventd")) {
+
+                CcspTraceWarning(("%s syseventd not running  \n",__FUNCTION__));
+           	sleep(600);
+	    } 
         }
         else
         {
