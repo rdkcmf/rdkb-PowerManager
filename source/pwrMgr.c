@@ -179,16 +179,16 @@ static int PwrMgr_StateTranstion(char *cState)
             // We need to call an RDKB management script to tear down the CCSP components.
             sprintf(cmd, "/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_AC");
 
-            fp = popen(cmd, "r");
-            if (fp == NULL) {
+            if (system( cmd ) == 0)
+            {
+                transSuccess = true;
+                gCurPowerState = newState;
+            }
+            else
+            {
                 /* Could not run command we can't transition to new state */
                 PWRMGRLOG(ERROR, "Error opening command pipe during power transition! \n");
                 return true;
-            }
-
-            if (pclose(fp) == 0) {
-                transSuccess = true;
-                gCurPowerState = newState;
             }
 
             break;
@@ -197,17 +197,18 @@ static int PwrMgr_StateTranstion(char *cState)
             // We need to call an RDKB management script to tear down the CCSP components.
             sprintf(cmd, "/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_BATTERY");
 
-            fp = popen(cmd, "r");
-            if (fp == NULL) {
+            if (system( cmd ) == 0)
+            {
+                transSuccess = true;
+                gCurPowerState = newState;
+            }
+            else
+            {
                 /* Could not run command we can't transition to new state */
                 PWRMGRLOG(ERROR, "Error opening command pipe during power transition! \n");
                 return true;
             }
 
-            if (pclose(fp) == 0) {
-                transSuccess = true;
-                gCurPowerState = newState;
-            }
             break;
         default:
             PWRMGRLOG(ERROR, "%s: Transition requested to unknown power state %s\n",__FUNCTION__, cState);
