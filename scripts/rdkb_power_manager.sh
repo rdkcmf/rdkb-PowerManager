@@ -23,17 +23,25 @@
 #   of the RDKB CCSP components.
 #------------------------------------------------------------------
 
+if [ -f /etc/device.properties ]
+then
+    source /etc/device.properties
+fi
 
 function usage()
 {
-  echo 'Usage : rdkb_power_manager.sh <power mode>'
-  echo '        where <power mode> = POWER_TRANS_AC, POWER_TRANS_BATTERY'
+  if [ "$XBB_SUPPORT" == "true" ]; then
+  	echo 'Usage : rdkb_power_manager.sh <power mode>'
+  	echo '        where <power mode> = POWER_TRANS_AC, POWER_TRANS_BATTERY, POWER_TRANS_HOT, POWER_TRANS_COOLED'
+  else
+  	echo 'Usage : rdkb_power_manager.sh <power mode>'
+  	echo '        where <power mode> = POWER_TRANS_AC, POWER_TRANS_HOT, POWER_TRANS_COOLED'
+  fi
   exit 1
 }
 
 function PwrMgr_TearDownComponents()
 {
-    echo "Tearing down RDKB Components"
     # We have to perform an ordely shutdown of the RDKB components.
     # At the very least we need to shutdown SelfHeal, CcspWifiSsp, CcspMoCa, CcspLMLite, DCA, webui and 
     # any process monitoring that may restart those processes.
@@ -52,7 +60,6 @@ function PwrMgr_TearDownComponents()
 
 function PwrMgr_StartupComponents()
 {
-    echo "Restoring RDKB Components"
     # We have to perform an orderly start of the RDKB components. Basically we have to start
     # the processes that we shut down above in the correct order.
 
@@ -76,7 +83,15 @@ if [ "$PWRMODE" = "" ]; then
 elif [ "$PWRMODE" == "POWER_TRANS_AC" ]; then
     PwrMgr_StartupComponents
 elif [ "$PWRMODE" == "POWER_TRANS_BATTERY" ]; then
-    PwrMgr_TearDownComponents
+    if [ "$XBB_SUPPORT" == "true" ]; then
+    	PwrMgr_TearDownComponents
+    else
+    	usage
+    fi
+elif [ "$PWRMODE" == "POWER_TRANS_HOT" ]; then
+    	PwrMgr_TearDownComponents
+elif [ "$PWRMODE" == "POWER_TRANS_COOLED" ]; then
+    PwrMgr_StartupComponents
 else
     usage
 fi

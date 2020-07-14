@@ -29,12 +29,20 @@
  *  Transition from Battery to AC:
  *  sysevent set rdkb-power-transition POWER_TRANS_AC
  *
- *  Transition from AC to Battery
+ *  Transition from AC to Battery if Device Supports Battery. Note: As of Now this is XBB Battery Only
  *  sysevent set rdkb-power-transition POWER_TRANS_BATTERY
+ *
+ *  Transition to Thermal Hot:
+ *  sysevent set rdkb-power-transition POWER_TRANS_HOT
+ *
+ *  Transition from Thermal Hot to Thermal Cooled:
+ *  sysevent set rdkb-power-transition POWER_TRANS_COOLED
  *
  *  When the transition is complete, the rdkb power state will change:
  *  rdkb-power-state AC
  *  rdkb-power-state BATTERY
+ *  rdkb-power-state ThermalHot
+ *  rdkb-power-state ThermalCooled
  *
  */
 
@@ -46,7 +54,11 @@ typedef enum
 {
     PWRMGR_STATE_UNKNOWN = 0,
     PWRMGR_STATE_AC,
+#if defined (_XBB1_SUPPORTED_)
     PWRMGR_STATE_BATT,
+#endif
+    PWRMGR_STATE_HOT,
+    PWRMGR_STATE_COOLED,
     PWRMGR_STATE_TOTAL
 } PWRMGR_PwrState;
 

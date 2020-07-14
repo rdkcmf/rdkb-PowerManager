@@ -87,8 +87,10 @@ const char compName[25]="LOG.RDK.PWRMGR";
 #define PWRMGRLOG(x, ...) {fprintf(stderr, "PowerMgrLog<%s:%d> ", __FUNCTION__, __LINE__);fprintf(stderr, __VA_ARGS__);}
 #endif
 
+#if defined (_XBB1_SUPPORTED_)
 // We need to put this after the ccsp_trace.h above, since it re-defines CHAR
 #include "mta_hal.h"
+#endif
 
 #define _DEBUG 1
 #define THREAD_NAME_LEN 16 //length is restricted to 16 characters, including the terminating null byte
@@ -97,7 +99,11 @@ const char compName[25]="LOG.RDK.PWRMGR";
 // Power Management state structure. This should have PWRMGR_STATE_TOTAL-1 entries
 PWRMGR_PwrStateItem powerStateArr[] = { {PWRMGR_STATE_UNKNOWN, "POWER_TRANS_UNKNOWN", "Unknown"},
                                         {PWRMGR_STATE_AC,   "POWER_TRANS_AC", "AC"},
-                                        {PWRMGR_STATE_BATT, "POWER_TRANS_BATTERY", "Battery"} };
+#if defined (_XBB1_SUPPORTED_)
+                                        {PWRMGR_STATE_BATT, "POWER_TRANS_BATTERY", "Battery"},
+#endif
+                                        {PWRMGR_STATE_HOT, "POWER_TRANS_HOT", "ThermalHot"},
+                                        {PWRMGR_STATE_COOLED, "POWER_TRANS_COOLED", "ThermalCooled"} };
 
 static PWRMGR_PwrState gCurPowerState;
 
@@ -113,6 +119,7 @@ static void PwrMgr_SetDefaults()
     // boot up in battery mode are we going to get a later notification that there was a power state change?
     // For now, we will call the mta hal to see what our current power state is.
     gCurPowerState = PWRMGR_STATE_AC;
+#if defined (_XBB1_SUPPORTED_)
     char status[DATA_SIZE] = {0};
     int len = 0;
     int halStatus = RETURN_OK;
@@ -129,6 +136,7 @@ static void PwrMgr_SetDefaults()
     } else {
         PWRMGRLOG(ERROR, "%s: Power Manager mta_hal_BatteryGetPowerStatus call FAILED!\n",__FUNCTION__);
     }
+#endif
 
     PWRMGRLOG(INFO, "%s: Power Manager initializing with %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrStateStr);
 
@@ -192,12 +200,50 @@ static int PwrMgr_StateTranstion(char *cState)
             }
 
             break;
+#if defined (_XBB1_SUPPORTED_)
         case PWRMGR_STATE_BATT:
             PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
             // We need to call an RDKB management script to tear down the CCSP components.
             sprintf(cmd, "/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_BATTERY");
 
             if (system( cmd ) == 0)
+            {
+                transSuccess = true;
+                gCurPowerState = newState;
+            }
+            else
+            {
+                /* Could not run command we can't transition to new state */
+                PWRMGRLOG(ERROR, "Error opening command pipe during power transition! \n");
+                return true;
+            }
+
+            break;
+#endif
+        case PWRMGR_STATE_HOT:
+            PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
+            // We need to call an RDKB management script to tear down the CCSP components.
+            sprintf(cmd, "/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_HOT");
+
+             if (system( cmd ) == 0)
+            {
+                transSuccess = true;
+                gCurPowerState = newState;
+            }
+            else
+            {
+                /* Could not run command we can't transition to new state */
+                PWRMGRLOG(ERROR, "Error opening command pipe during power transition! \n");
+                return true;
+            }
+
+            break;
+        case PWRMGR_STATE_COOLED:
+            PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
+            // We need to call an RDKB management script to tear down the CCSP components.
+            sprintf(cmd, "/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_COOLED");
+
+           if (system( cmd ) == 0)
             {
                 transSuccess = true;
                 gCurPowerState = newState;
