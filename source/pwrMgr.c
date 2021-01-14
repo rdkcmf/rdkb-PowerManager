@@ -45,6 +45,7 @@
 /**************************************************************************/
 /*      INCLUDES:                                                         */
 /**************************************************************************/
+#define _GNU_SOURCE
 #include <arpa/inet.h>
 #include <errno.h>
 #include <net/if.h>
@@ -64,6 +65,7 @@
 #include <stdarg.h>
 #include "stdbool.h"
 #include "pwrMgr.h"
+#include <pthread.h>
 
 /**************************************************************************/
 /*      LOCAL VARIABLES:                                                  */
@@ -125,7 +127,7 @@ static void PwrMgr_SetDefaults()
     int halStatus = RETURN_OK;
 
     // Fetch the current battery status from mta - returns "AC", "Battery" or "Unknown"
-    halStatus = mta_hal_BatteryGetPowerStatus (&status, &len);
+    halStatus = mta_hal_BatteryGetPowerStatus (status, (ULONG *)&len);
 
     if (halStatus == RETURN_OK && len > 0 && status[0] != 0) {
         PWRMGRLOG(INFO, "%s: Power Manager mta_hal_BatteryGetPowerStatus returned %s\n",__FUNCTION__, status);
@@ -161,7 +163,6 @@ int PwrMgr_SyseventSetStr(const char *name, unsigned char *value, int bufsz)
  */
 static int PwrMgr_StateTranstion(char *cState)
 {
-    FILE *fp = NULL;
     char cmd[DATA_SIZE] = {0};
     bool transSuccess = false;
 
@@ -465,7 +466,9 @@ static bool checkIfAlreadyRunning(const char* name)
 static void daemonize(void) 
 {
     PWRMGRLOG(INFO, "Entering into %s\n",__FUNCTION__)
+#ifndef  _DEBUG
     int fd;
+#endif
     switch (fork()) {
     case 0:
       	PWRMGRLOG(ERROR, "In child pid=%d\n", getpid())
@@ -520,7 +523,7 @@ int main(int argc, char *argv[])
     int retry = 0;
 
 #ifdef FEATURE_SUPPORT_RDKLOG
-    pComponentName = compName;
+    pComponentName = (char *)compName;
     rdk_logger_init(DEBUG_INI_NAME);
 #endif
 

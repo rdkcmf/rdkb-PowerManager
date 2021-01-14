@@ -69,4 +69,6 @@ typedef struct
     char *pwrStateStr;  // Power State string
 } PWRMGR_PwrStateItem;
 
+int PwrMgr_SyseventSetStr(const char *name, unsigned char *value, int bufsz);
+
 #endif
