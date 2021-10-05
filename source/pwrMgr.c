@@ -76,6 +76,10 @@ static pthread_t sysevent_tid;
 static int sysevent_fd_gs;
 static token_t sysevent_token_gs;
 
+#ifdef INCLUDE_BREAKPAD
+#include "breakpad_wrapper.h"
+#endif
+
 #define INFO  0
 #define WARNING  1
 #define ERROR 2
@@ -525,6 +529,10 @@ int main(int argc, char *argv[])
 #ifdef FEATURE_SUPPORT_RDKLOG
     pComponentName = (char *)compName;
     rdk_logger_init(DEBUG_INI_NAME);
+#endif
+
+#ifdef INCLUDE_BREAKPAD
+    breakpad_ExceptionHandler();
 #endif
 
     PWRMGRLOG(INFO, "Started power manager\n")
