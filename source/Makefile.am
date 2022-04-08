@@ -29,5 +29,5 @@ hardware_platform = i686-linux-gnu
 bin_PROGRAMS = rdkbPowerMgr
 rdkbPowerMgr_CPPFLAGS =  $(CPPFLAGS) -I$(srcdir)/include -I${PKG_CONFIG_SYSROOT_DIR}/$(includedir)/ruli/
 rdkbPowerMgr_SOURCES = pwrMgr.c
-rdkbPowerMgr_LDFLAGS = -lsysevent -lsyscfg -lccsp_common -lhal_mta -pthread
+rdkbPowerMgr_LDFLAGS = -lsysevent -lsyscfg -lccsp_common -lhal_mta -pthread -lsecure_wrapper
 

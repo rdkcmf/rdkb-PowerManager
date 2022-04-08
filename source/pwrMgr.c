@@ -66,7 +66,7 @@
 #include "stdbool.h"
 #include "pwrMgr.h"
 #include <pthread.h>
-
+#include "secure_wrapper.h"
 /**************************************************************************/
 /*      LOCAL VARIABLES:                                                  */
 /**************************************************************************/
@@ -167,7 +167,6 @@ int PwrMgr_SyseventSetStr(const char *name, unsigned char *value, int bufsz)
  */
 static int PwrMgr_StateTranstion(char *cState)
 {
-    char cmd[DATA_SIZE] = {0};
     bool transSuccess = false;
 
     PWRMGR_PwrState newState = PWRMGR_STATE_UNKNOWN;
@@ -190,9 +189,8 @@ static int PwrMgr_StateTranstion(char *cState)
         case PWRMGR_STATE_AC:
             PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
             // We need to call an RDKB management script to tear down the CCSP components.
-            sprintf(cmd, "/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_AC");
 
-            if (system( cmd ) == 0)
+            if (v_secure_system("/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_AC") == 0)
             {
                 transSuccess = true;
                 gCurPowerState = newState;
@@ -209,9 +207,8 @@ static int PwrMgr_StateTranstion(char *cState)
         case PWRMGR_STATE_BATT:
             PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
             // We need to call an RDKB management script to tear down the CCSP components.
-            sprintf(cmd, "/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_BATTERY");
 
-            if (system( cmd ) == 0)
+            if (v_secure_system("/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_BATTERY") == 0)
             {
                 transSuccess = true;
                 gCurPowerState = newState;
@@ -228,9 +225,8 @@ static int PwrMgr_StateTranstion(char *cState)
         case PWRMGR_STATE_HOT:
             PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
             // We need to call an RDKB management script to tear down the CCSP components.
-            sprintf(cmd, "/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_HOT");
 
-             if (system( cmd ) == 0)
+             if (v_secure_system("/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_HOT") == 0)
             {
                 transSuccess = true;
                 gCurPowerState = newState;
@@ -246,9 +242,8 @@ static int PwrMgr_StateTranstion(char *cState)
         case PWRMGR_STATE_COOLED:
             PWRMGRLOG(INFO, "%s: Power transition requested from %s to %s\n",__FUNCTION__, powerStateArr[gCurPowerState].pwrTransStr, powerStateArr[newState].pwrTransStr);
             // We need to call an RDKB management script to tear down the CCSP components.
-            sprintf(cmd, "/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_COOLED");
 
-           if (system( cmd ) == 0)
+           if (v_secure_system("/bin/sh /usr/ccsp/pwrMgr/rdkb_power_manager.sh POWER_TRANS_COOLED") == 0)
             {
                 transSuccess = true;
                 gCurPowerState = newState;
@@ -306,7 +301,7 @@ static void *PwrMgr_sysevent_handler(void *data)
         if (err)
         {
             PWRMGRLOG(ERROR, "sysevent_getnotification failed with error: %d\n", err)
-            if ( 0 != system("pidof syseventd")) {
+            if ( 0 != v_secure_system("pidof syseventd")) {
 
                 CcspTraceWarning(("%s syseventd not running  \n",__FUNCTION__));
            	sleep(600);
@@ -372,7 +367,7 @@ static bool PwrMgr_Register_sysevent()
         }
 
         if(status == false) {
-        	system("/usr/bin/syseventd");
+        	v_secure_system("/usr/bin/syseventd");
                 sleep(5);
         }
     }while((status == false) && (retry++ < max_retries));
